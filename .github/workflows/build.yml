@@ -69,7 +69,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          brew install xcodegen zstd spirv-cross unar
+          brew install xcodegen zstd spirv-cross unar glslang
 
           python -m pip install --upgrade pip
 
@@ -703,7 +703,7 @@ jobs:
             xcodebuild -version 2>&1 || true
 
             brew list --versions 2>/dev/null | grep -E \
-              'xcodegen|zstd|spirv-cross|unar' || true
+              'xcodegen|zstd|spirv-cross|unar|glslang' || true
 
             echo ""
 
