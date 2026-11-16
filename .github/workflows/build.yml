@@ -419,7 +419,10 @@ jobs:
                   )
 
               validate_package(source)
-              shutil.copy2(source, target)
+              # Move the extracted package instead of copying it. Both
+              # directories are on RUNNER_TEMP's volume, so this avoids
+              # needing a second full-size NSP/XCI during preparation.
+              shutil.move(str(source), str(target))
 
               print(
                   f"Added {label}: {target.name} "
@@ -495,7 +498,8 @@ jobs:
                           f"Output package already exists: {target.name}"
                       )
 
-                  shutil.copy2(source, target)
+                  # Move direct packages too; don't duplicate multi-GB files.
+                  shutil.move(str(source), str(target))
                   validate_package(target)
 
                   print(
@@ -523,6 +527,56 @@ jobs:
           PY
 
           test -s "$WORK/prod.keys"
+
+      # ================================================
+      # RECLAIM RUNNER DISK SPACE
+      # The iOS device build does not use Simulator runtimes.
+      # Remove simulator-only assets and duplicate downloads
+      # before generating thousands of Metal shader libraries.
+      # ================================================
+
+      - name: Reclaim disk space before shader compilation
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Disk space before cleanup:"
+          df -h "$RUNNER_TEMP"
+
+          echo "Removing simulator devices and runtimes (not the iOS SDK)..."
+          xcrun simctl shutdown all || true
+          xcrun simctl delete all || true
+          xcrun simctl runtime delete all || true
+
+          echo "Removing Xcode build and simulator caches..."
+          rm -rf "$HOME/Library/Developer/Xcode/DerivedData"
+          rm -rf "$HOME/Library/Developer/CoreSimulator/Caches"
+          rm -rf "$HOME/Library/Caches/org.swift.swiftpm"
+          rm -rf "$HOME/Library/Caches/Homebrew"
+          brew cleanup -s || true
+
+          echo "Removing duplicate source downloads and download cache..."
+          WORK="$RUNNER_TEMP/nxnative"
+          rm -rf \
+            "$WORK/download-cache" \
+            "$WORK/extracted-game" \
+            "$WORK/extracted-update" \
+            "$WORK/extracted-dlc" \
+            "$WORK/game.download" \
+            "$WORK/update.download" \
+            "$WORK/dlc.download"
+
+          echo "Remaining prepared packages:"
+          du -sh "$RUNNER_TEMP/GameFiles"/* 2>/dev/null || true
+
+          echo "Disk space after cleanup:"
+          df -h "$RUNNER_TEMP"
+
+          AVAILABLE_KB="$(df -Pk "$RUNNER_TEMP" | awk 'NR==2 {print $4}')"
+          if [[ "$AVAILABLE_KB" -lt 15000000 ]]; then
+            echo "::error::Less than 15 GB free after cleanup; refusing to start shader compilation."
+            exit 1
+          fi
 
       # ================================================
       # DETECT BASE TITLE ID
