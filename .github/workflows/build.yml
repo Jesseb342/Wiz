@@ -599,41 +599,19 @@ jobs:
       # the actual toolchain used for this build.
       # ================================================
 
-      - name: Adapt shader translation lock to runner
+      - name: Refresh shader tool lock for this runner
         shell: bash
         run: |
           set -euo pipefail
 
-          python - <<'PY'
-          from pathlib import Path
+          # This upstream revision no longer has the old provisional-profile
+          # block that the previous patch attempted to replace. Refresh the
+          # local tool fingerprints directly, then regenerate the matching
+          # chain header before the IPA builder checks them.
+          python dm/gfx/tools/tool_lock.py --update-lock
+          python dm/gfx/tools/dmsh_chain.py --header
 
-          path = Path("scripts/build_ipa_from_nsp.py")
-          source = path.read_text()
 
-          old = """    PROG.stage('iOS shaders')
-              if provisional:
-                  PROG.set(step='chain header')
-                  run([py, repo / 'dm/gfx/tools/dmsh_chain.py', '--header'], logs / 'dmsh_chain.log', env=env)   # the profile's chain version header (dmsh_build checks it)
-              chain = re.search(r'#define DMSH_CHAIN "(.*)"', g.table('dmsh_chain.h').read_text()).group(1)
-          """
-
-          new = """    PROG.stage('iOS shaders')
-              PROG.set(step='toolchain lock')
-              run([py, repo / 'dm/gfx/tools/dmsh_chain.py', '--update-lock'], logs / 'dmsh_chain_lock.log', env=env)
-              PROG.set(step='chain header')
-              run([py, repo / 'dm/gfx/tools/dmsh_chain.py', '--header'], logs / 'dmsh_chain.log', env=env)
-              chain = re.search(r'#define DMSH_CHAIN "(.*)"', g.table('dmsh_chain.h').read_text()).group(1)
-          """
-
-          if old not in source:
-              raise SystemExit(
-                  "Could not find the expected nxnative shader-chain block; "
-                  "refusing to patch an unknown source version."
-              )
-
-          path.write_text(source.replace(old, new, 1))
-          print("Patched shader build to refresh the tool lock and chain header.")
-          PY
 
       # ================================================
       # BUILD UNSIGNED IPA
