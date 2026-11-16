@@ -63,15 +63,15 @@ jobs:
             exit 1
           fi
 
-          METALFX_HEADER="$SDK_PATH/System/Library/Frameworks/MetalFX.framework/Headers/MetalFX.h"
+          METALFX_HEADERS="$SDK_PATH/System/Library/Frameworks/MetalFX.framework/Headers"
 
-          if [[ ! -f "$METALFX_HEADER" ]]; then
-            echo "::error::MetalFX header not found: $METALFX_HEADER"
+          if [[ ! -d "$METALFX_HEADERS" ]]; then
+            echo "::error::MetalFX headers not found: $METALFX_HEADERS"
             exit 1
           fi
 
           for symbol in reactiveMaskTextureUsage colorContentOffsetX; do
-            if ! grep -q "$symbol" "$METALFX_HEADER"; then
+            if ! grep -R -q "$symbol" "$METALFX_HEADERS"; then
               echo "::error::Required MetalFX API '$symbol' is missing from the selected SDK."
               exit 1
             fi
