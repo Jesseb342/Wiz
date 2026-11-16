@@ -71,6 +71,9 @@ jobs:
 
           brew install xcodegen zstd spirv-cross unar glslang
 
+          command -v glslangValidator
+          glslangValidator --version
+
           python -m pip install --upgrade pip
 
           python -m pip install \
