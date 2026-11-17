@@ -121,9 +121,9 @@ jobs:
           git log -1 --format='%H %s'
 
           git remote add upstream https://github.com/seedds/nxnative.git
-          git fetch --no-tags upstream main
+          git fetch --no-tags upstream main:refs/remotes/upstream/main
 
-          UPSTREAM_SHA="$(git rev-parse FETCH_HEAD)"
+          UPSTREAM_SHA="$(git rev-parse upstream/main)"
           BC_SHA="$(git rev-parse HEAD)"
 
           echo "Latest upstream NxNative: $UPSTREAM_SHA"
